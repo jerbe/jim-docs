@@ -150,6 +150,82 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/chat/message/last": {
+            "get": {
+                "security": [
+                    {
+                        "APIKeyQuery": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "聊天"
+                ],
+                "summary": "获取最近的聊天消息",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "目标ID; 朋友ID/群ID/世界频道ID",
+                        "name": "target_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "会话类型; 1-私人会话;2-群聊会话;99-世界频道会话",
+                        "name": "session_type",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handler.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/handler.ChatMessage"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handler.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/chat/message/send": {
             "post": {
                 "security": [
@@ -190,7 +266,10 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/handler.SendChatMessageResponse"
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/handler.ChatMessage"
+                                            }
                                         }
                                     }
                                 }
@@ -219,10 +298,10 @@ const docTemplate = `{
             }
         },
         "/v1/friend/find": {
-            "post": {
+            "get": {
                 "security": [
                     {
-                        "APIKeyHeader": []
+                        "APIKeyQuery": []
                     }
                 ],
                 "consumes": [
@@ -237,13 +316,22 @@ const docTemplate = `{
                 "summary": "查找好友",
                 "parameters": [
                     {
-                        "description": "请求JSON数据体",
-                        "name": "jsonRaw",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.FindFriendRequest"
-                        }
+                        "type": "integer",
+                        "description": "用户ID; 'user_id'跟'nickname'必选一个",
+                        "name": "user_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "用户昵称; 'user_id'跟'nickname'必选一个",
+                        "name": "nickname",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "用于搜索下一批用户的起始ID;是上次返回结果中最大的用户ID",
+                        "name": "start_id",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -258,7 +346,10 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/handler.FindFriendResponse"
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/handler.User"
+                                            }
                                         }
                                     }
                                 }
@@ -1063,6 +1154,76 @@ const docTemplate = `{
                 }
             }
         },
+        "handler.ChatMessage": {
+            "description": "消息体",
+            "type": "object",
+            "required": [
+                "body",
+                "session_type",
+                "type"
+            ],
+            "properties": {
+                "action_id": {
+                    "description": "ActionID 行为ID,由前端生成",
+                    "type": "string",
+                    "example": "8d7a3bcd72"
+                },
+                "body": {
+                    "description": "Body 消息体;",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/handler.ChatMessageBody"
+                        }
+                    ]
+                },
+                "created_at": {
+                    "description": "CreatedAt 创建",
+                    "type": "integer",
+                    "example": 12345678901234
+                },
+                "id": {
+                    "description": "ID 消息ID",
+                    "type": "string",
+                    "example": "9d7a3bcd72"
+                },
+                "message_id": {
+                    "description": "MessageID 消息ID",
+                    "type": "integer",
+                    "example": 123
+                },
+                "receiver_id": {
+                    "description": "ReceiverID 接收方ID",
+                    "type": "integer",
+                    "example": 1
+                },
+                "sender_id": {
+                    "description": "SenderID 发送方ID",
+                    "type": "integer",
+                    "example": 1234456
+                },
+                "session_type": {
+                    "description": "SessionType 会话类型; 1:私聊, 2:群聊",
+                    "type": "integer",
+                    "enum": [
+                        1,
+                        2
+                    ],
+                    "example": 1
+                },
+                "type": {
+                    "description": "Type 消息类型; 1-纯文本,2-图片,3-语音,4-视频, 5-位置",
+                    "type": "integer",
+                    "enum": [
+                        1,
+                        2,
+                        3,
+                        4,
+                        5
+                    ],
+                    "example": 1
+                }
+            }
+        },
         "handler.ChatMessageBody": {
             "description": "消息主体",
             "type": "object",
@@ -1151,39 +1312,6 @@ const docTemplate = `{
                 }
             }
         },
-        "handler.FindFriendRequest": {
-            "description": "查找好友请求参数",
-            "type": "object",
-            "properties": {
-                "nickname": {
-                    "description": "Nickname 昵称",
-                    "type": "string",
-                    "example": "昵称"
-                },
-                "start_id": {
-                    "description": "StartID 开始搜索ID,下次搜索用上返回的最大ID",
-                    "type": "integer",
-                    "example": 0
-                },
-                "user_id": {
-                    "description": "UserID 用户ID",
-                    "type": "integer",
-                    "example": 1
-                }
-            }
-        },
-        "handler.FindFriendResponse": {
-            "description": "查找好友返回参数",
-            "type": "object",
-            "properties": {
-                "users": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/handler.User"
-                    }
-                }
-            }
-        },
         "handler.JoinGroupRequest": {
             "description": "入群请求参数",
             "type": "object",
@@ -1257,6 +1385,7 @@ const docTemplate = `{
         "handler.Response": {
             "type": "object",
             "required": [
+                "request_id",
                 "status"
             ],
             "properties": {
@@ -1264,6 +1393,10 @@ const docTemplate = `{
                 "error": {
                     "type": "string",
                     "example": "系统内部错误"
+                },
+                "request_id": {
+                    "type": "string",
+                    "example": "11234"
                 },
                 "status": {
                     "type": "integer",
@@ -1276,8 +1409,8 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "body",
-                "receiver_id",
                 "session_type",
+                "target_id",
                 "type"
             ],
             "properties": {
@@ -1294,11 +1427,6 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "receiver_id": {
-                    "description": "ReceiverID 接收人; 可以是用户ID,也可以是群号",
-                    "type": "integer",
-                    "example": 1234
-                },
                 "session_type": {
                     "description": "SessionType 会话类型; 1:私聊, 2:群聊",
                     "type": "integer",
@@ -1308,77 +1436,13 @@ const docTemplate = `{
                     ],
                     "example": 1
                 },
-                "type": {
-                    "description": "Type 消息类型: 1-纯文本,2-图片,3-语音,4-视频, 5-位置",
-                    "type": "integer",
-                    "enum": [
-                        1,
-                        2,
-                        3,
-                        4,
-                        5
-                    ],
-                    "example": 1
-                }
-            }
-        },
-        "handler.SendChatMessageResponse": {
-            "description": "发送聊天返回数据",
-            "type": "object",
-            "required": [
-                "body",
-                "created_at",
-                "message_id",
-                "receiver_id",
-                "sender_id",
-                "session_type",
-                "type"
-            ],
-            "properties": {
-                "action_id": {
-                    "description": "ActionID 行为ID,由前端生成",
-                    "type": "string",
-                    "example": "8d7a3bcd72"
-                },
-                "body": {
-                    "description": "Body 消息体;",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/handler.ChatMessageBody"
-                        }
-                    ]
-                },
-                "created_at": {
-                    "description": "CreatedAt 创建",
-                    "type": "integer",
-                    "example": 12345678901234
-                },
-                "message_id": {
-                    "description": "MessageID 消息ID",
-                    "type": "integer",
-                    "example": 123
-                },
-                "receiver_id": {
-                    "description": "ReceiverID 接收人; 可以是用户ID,也可以是群号",
+                "target_id": {
+                    "description": "TargetID 目标ID; 可以是用户ID,也可以是群ID,也可以是世界频道ID",
                     "type": "integer",
                     "example": 1234
                 },
-                "sender_id": {
-                    "description": "发送人ID",
-                    "type": "integer",
-                    "example": 1234456
-                },
-                "session_type": {
-                    "description": "SessionType 会话类型; 1:私聊, 2:群聊",
-                    "type": "integer",
-                    "enum": [
-                        1,
-                        2
-                    ],
-                    "example": 1
-                },
                 "type": {
-                    "description": "Type 消息类型: 1-纯文本,2-图片,3-语音,4-视频, 5-位置",
+                    "description": "Type 消息类型; 1-纯文本,2-图片,3-语音,4-视频, 5-位置",
                     "type": "integer",
                     "enum": [
                         1,
@@ -1540,6 +1604,11 @@ const docTemplate = `{
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"
+        },
+        "APIKeyQuery": {
+            "type": "apiKey",
+            "name": "token",
+            "in": "query"
         }
     },
     "externalDocs": {

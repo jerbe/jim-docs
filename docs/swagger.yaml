@@ -137,6 +137,59 @@ definitions:
     - user_id
     - username
     type: object
+  handler.ChatMessage:
+    description: 消息体
+    properties:
+      action_id:
+        description: ActionID 行为ID,由前端生成
+        example: 8d7a3bcd72
+        type: string
+      body:
+        allOf:
+        - $ref: '#/definitions/handler.ChatMessageBody'
+        description: Body 消息体;
+      created_at:
+        description: CreatedAt 创建
+        example: 12345678901234
+        type: integer
+      id:
+        description: ID 消息ID
+        example: 9d7a3bcd72
+        type: string
+      message_id:
+        description: MessageID 消息ID
+        example: 123
+        type: integer
+      receiver_id:
+        description: ReceiverID 接收方ID
+        example: 1
+        type: integer
+      sender_id:
+        description: SenderID 发送方ID
+        example: 1234456
+        type: integer
+      session_type:
+        description: SessionType 会话类型; 1:私聊, 2:群聊
+        enum:
+        - 1
+        - 2
+        example: 1
+        type: integer
+      type:
+        description: Type 消息类型; 1-纯文本,2-图片,3-语音,4-视频, 5-位置
+        enum:
+        - 1
+        - 2
+        - 3
+        - 4
+        - 5
+        example: 1
+        type: integer
+    required:
+    - body
+    - session_type
+    - type
+    type: object
   handler.ChatMessageBody:
     description: 消息主体
     properties:
@@ -204,30 +257,6 @@ definitions:
     - group_id
     - group_name
     type: object
-  handler.FindFriendRequest:
-    description: 查找好友请求参数
-    properties:
-      nickname:
-        description: Nickname 昵称
-        example: 昵称
-        type: string
-      start_id:
-        description: StartID 开始搜索ID,下次搜索用上返回的最大ID
-        example: 0
-        type: integer
-      user_id:
-        description: UserID 用户ID
-        example: 1
-        type: integer
-    type: object
-  handler.FindFriendResponse:
-    description: 查找好友返回参数
-    properties:
-      users:
-        items:
-          $ref: '#/definitions/handler.User'
-        type: array
-    type: object
   handler.JoinGroupRequest:
     description: 入群请求参数
     properties:
@@ -285,10 +314,14 @@ definitions:
       error:
         example: 系统内部错误
         type: string
+      request_id:
+        example: "11234"
+        type: string
       status:
         example: 1
         type: integer
     required:
+    - request_id
     - status
     type: object
   handler.SendChatMessageRequest:
@@ -302,10 +335,6 @@ definitions:
         allOf:
         - $ref: '#/definitions/handler.ChatMessageBody'
         description: Body 消息体;
-      receiver_id:
-        description: ReceiverID 接收人; 可以是用户ID,也可以是群号
-        example: 1234
-        type: integer
       session_type:
         description: SessionType 会话类型; 1:私聊, 2:群聊
         enum:
@@ -313,8 +342,12 @@ definitions:
         - 2
         example: 1
         type: integer
+      target_id:
+        description: TargetID 目标ID; 可以是用户ID,也可以是群ID,也可以是世界频道ID
+        example: 1234
+        type: integer
       type:
-        description: 'Type 消息类型: 1-纯文本,2-图片,3-语音,4-视频, 5-位置'
+        description: Type 消息类型; 1-纯文本,2-图片,3-语音,4-视频, 5-位置
         enum:
         - 1
         - 2
@@ -325,61 +358,8 @@ definitions:
         type: integer
     required:
     - body
-    - receiver_id
     - session_type
-    - type
-    type: object
-  handler.SendChatMessageResponse:
-    description: 发送聊天返回数据
-    properties:
-      action_id:
-        description: ActionID 行为ID,由前端生成
-        example: 8d7a3bcd72
-        type: string
-      body:
-        allOf:
-        - $ref: '#/definitions/handler.ChatMessageBody'
-        description: Body 消息体;
-      created_at:
-        description: CreatedAt 创建
-        example: 12345678901234
-        type: integer
-      message_id:
-        description: MessageID 消息ID
-        example: 123
-        type: integer
-      receiver_id:
-        description: ReceiverID 接收人; 可以是用户ID,也可以是群号
-        example: 1234
-        type: integer
-      sender_id:
-        description: 发送人ID
-        example: 1234456
-        type: integer
-      session_type:
-        description: SessionType 会话类型; 1:私聊, 2:群聊
-        enum:
-        - 1
-        - 2
-        example: 1
-        type: integer
-      type:
-        description: 'Type 消息类型: 1-纯文本,2-图片,3-语音,4-视频, 5-位置'
-        enum:
-        - 1
-        - 2
-        - 3
-        - 4
-        - 5
-        example: 1
-        type: integer
-    required:
-    - body
-    - created_at
-    - message_id
-    - receiver_id
-    - sender_id
-    - session_type
+    - target_id
     - type
     type: object
   handler.UpdateFriendInviteRequest:
@@ -590,6 +570,52 @@ paths:
       summary: 注册
       tags:
       - 认证
+  /v1/chat/message/last:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 目标ID; 朋友ID/群ID/世界频道ID
+        in: query
+        name: target_id
+        required: true
+        type: integer
+      - description: 会话类型; 1-私人会话;2-群聊会话;99-世界频道会话
+        in: query
+        name: session_type
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/handler.ChatMessage'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.Response'
+      security:
+      - APIKeyQuery: []
+      summary: 获取最近的聊天消息
+      tags:
+      - 聊天
   /v1/chat/message/send:
     post:
       consumes:
@@ -611,7 +637,9 @@ paths:
             - $ref: '#/definitions/handler.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/handler.SendChatMessageResponse'
+                  items:
+                    $ref: '#/definitions/handler.ChatMessage'
+                  type: array
               type: object
         "400":
           description: Bad Request
@@ -631,16 +659,22 @@ paths:
       tags:
       - 聊天
   /v1/friend/find:
-    post:
+    get:
       consumes:
       - application/json
       parameters:
-      - description: 请求JSON数据体
-        in: body
-        name: jsonRaw
-        required: true
-        schema:
-          $ref: '#/definitions/handler.FindFriendRequest'
+      - description: 用户ID; 'user_id'跟'nickname'必选一个
+        in: query
+        name: user_id
+        type: integer
+      - description: 用户昵称; 'user_id'跟'nickname'必选一个
+        in: query
+        name: nickname
+        type: integer
+      - description: 用于搜索下一批用户的起始ID;是上次返回结果中最大的用户ID
+        in: query
+        name: start_id
+        type: integer
       produces:
       - application/json
       responses:
@@ -651,7 +685,9 @@ paths:
             - $ref: '#/definitions/handler.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/handler.FindFriendResponse'
+                  items:
+                    $ref: '#/definitions/handler.User'
+                  type: array
               type: object
         "400":
           description: Bad Request
@@ -666,7 +702,7 @@ paths:
           schema:
             $ref: '#/definitions/handler.Response'
       security:
-      - APIKeyHeader: []
+      - APIKeyQuery: []
       summary: 查找好友
       tags:
       - 朋友
@@ -1039,5 +1075,9 @@ securityDefinitions:
   APIKeyHeader:
     in: header
     name: Authorization
+    type: apiKey
+  APIKeyQuery:
+    in: query
+    name: token
     type: apiKey
 swagger: "2.0"
