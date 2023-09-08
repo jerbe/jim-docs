@@ -85,7 +85,7 @@ jobs:
           bin_arrays=($(ls jim-docs-*))
           for ((i=0; i<${#bin_arrays[@]}; i++)); do
            zip_name=$(echo ${bin_arrays[$i]}|awk -F '-' '{print $3"-"$4}'|awk -F'.' '{print $1}')
-           zip -r ${zip_name}-${{ github.event.inputs.version}}.zip ./*
+           zip -r ${zip_name}-${{ github.event.inputs.version}}.zip ./${bin_arrays[$i]} ./*.json ./*.yaml
           done          
           echo "status=success" >> $GITHUB_OUTPUT
 
