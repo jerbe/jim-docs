@@ -1,0 +1,102 @@
+
+name: "交叉编译JIM-DOCS"
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '输入需要编译的版本:以字母"v"开头'
+        required: true
+        default: ''
+
+jobs:
+  buile_openwrt:
+    runs-on: Ubuntu-20.04
+    if: github.event.repository.owner.id == github.event.sender.id
+    name: 构建项目
+    steps:
+      - name: 检查
+        uses: actions/checkout@main
+
+      - name: 初始化环境
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo -E apt-get -qq update
+          sudo -E apt-get -qq install zip unzip
+          sudo snap refresh
+          sudo snap install go --classic
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: 下载依赖
+        run: |
+          go mod tidy
+
+      - name: 开始编译
+        id: compile
+        working-directory: ./
+        run: |
+          function build_func {
+            suffix=""
+            if [ "$1" = "windows" ] ; then
+              suffix=".exe"
+            fi
+            echo "编译OS:$1 ARCH:$2 ..."
+            echo "CGO_ENABLED=0 GOOS=$1   GOARCH=$2    go build -o ./bin/jim-docs-$1-$2${suffix}    ./*.go"
+            CGO_ENABLED=0 GOOS=$1   GOARCH=$2    go build -o ./bin/jim-docs-$1-$2${suffix}    ./*.go
+          }
+          
+          echo "开始编译[darwin]环境执行文件"
+          darwin_arch=("amd64" "arm64")
+          for ((i=0; i<${#darwin_arch[@]}; i++)); do
+            build_func darwin ${darwin_arch[$i]}
+          done
+          
+          echo "开始编译[freebsd]环境执行文件"
+          freebsd_arch=("386" "amd64" "arm" "arm64")
+          for ((i=0; i<${#freebsd_arch[@]}; i++)); do
+            build_func freebsd ${freebsd_arch[$i]}
+          done
+          
+          echo "开始编译[linux]环境执行文件"
+          linux_arch=("386" "amd64" "arm" "arm64" "mips" "mips64")
+          for ((i=0; i<${#linux_arch[@]}; i++)); do
+            build_func linux ${linux_arch[$i]}
+          done
+          
+          echo "开始编译[windows]环境执行文件"
+          windows_arch=("386" "amd64" "arm" "arm64")
+          for ((i=0; i<${#windows_arch[@]}; i++)); do
+            build_func windows ${windows_arch[$i]}
+          done
+          
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: 整理文件
+        id: organize
+        if: steps.compile.outputs.status == 'success' && !cancelled()
+        working-directory: ./bin
+        run: |
+          cp ../docs/*.json ./
+          cp ../docs/*.yaml ./
+          
+          bin_arrays=($(ls jim-docs-*))
+          for ((i=0; i<${#bin_arrays[@]}; i++)); do
+           zip_name=$(echo ${bin_arrays[$i]}|awk -F '-' '{print $3"-"$4}'|awk -F'.' '{print $1}')
+           zip -r ${zip_name}-${{ github.event.inputs.version}}.zip ./*
+          done          
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: 发布到release
+        uses: ncipollo/release-action@main
+        if: ${{ steps.organize.outputs.status }} == 'success' && !cancelled()
+        with:
+          tag: ${{ github.event.inputs.version}}
+          name: ${{ github.event.inputs.version}}
+          artifacts: ./bin/*.zip
+          allowUpdates: true
+          body: |
+            ### JIM-DOC 
+            JIM的文档系统
