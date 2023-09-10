@@ -24,6 +24,67 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/v1/auth/captcha": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "认证"
+                ],
+                "summary": "登录",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "capthca类型;audio,string,math,chinese,digit",
+                        "name": "type",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handler.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/handler.GetCaptchaResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handler.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/auth/login": {
             "post": {
                 "consumes": [
@@ -35,7 +96,7 @@ const docTemplate = `{
                 "tags": [
                     "认证"
                 ],
-                "summary": "登陆",
+                "summary": "登录",
                 "parameters": [
                     {
                         "description": "请求JSON数据体",
@@ -1044,6 +1105,14 @@ const docTemplate = `{
                 "username"
             ],
             "properties": {
+                "captcha": {
+                    "description": "Captcha 验证码;当登录错误超过次数时,必须填",
+                    "type": "string"
+                },
+                "captcha_id": {
+                    "description": "CaptchaID 验证码ID; 当登录错误超过次数时,必须填; 通过调用 /api/v1/auth/captcha 获得",
+                    "type": "string"
+                },
                 "password": {
                     "description": "Password 密码",
                     "type": "string",
@@ -1059,15 +1128,19 @@ const docTemplate = `{
         "handler.AuthLoginResponse": {
             "description": "用户登陆返回参数",
             "type": "object",
-            "required": [
-                "expires_at",
-                "token"
-            ],
             "properties": {
                 "expires_at": {
                     "description": "ExpiresAt 到期时间",
                     "type": "integer",
                     "example": 1725249106
+                },
+                "fail_times": {
+                    "description": "FailTimes 累计失败次数",
+                    "type": "integer"
+                },
+                "need_captcha": {
+                    "description": "NeedCaptcha 是否需要验证码",
+                    "type": "boolean"
                 },
                 "token": {
                     "description": "Token 认证Token",
@@ -1080,6 +1153,8 @@ const docTemplate = `{
             "description": "用户注册请求参数",
             "type": "object",
             "required": [
+                "captcha",
+                "captcha_id",
                 "confirm_password",
                 "password",
                 "username"
@@ -1090,6 +1165,14 @@ const docTemplate = `{
                     "type": "string",
                     "minLength": 8,
                     "example": "2016-01-02"
+                },
+                "captcha": {
+                    "description": "Captcha 验证码",
+                    "type": "string"
+                },
+                "captcha_id": {
+                    "description": "CaptchaID 验证码ID, 通过调用 /api/v1/auth/captcha 获得",
+                    "type": "string"
                 },
                 "confirm_password": {
                     "description": "ConfirmPassword 确认密码",
@@ -1309,6 +1392,31 @@ const docTemplate = `{
                     "description": "GroupName 群名称",
                     "type": "string",
                     "example": "群聊1098"
+                }
+            }
+        },
+        "handler.GetCaptchaResponse": {
+            "description": "获取验证码返回数据",
+            "type": "object",
+            "required": [
+                "data",
+                "id",
+                "type"
+            ],
+            "properties": {
+                "data": {
+                    "description": "Data 验证码数据;有图片数据,也有音频数据,前端需要根据type生成对应媒体数据",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "ID 验证码验证ID",
+                    "type": "string",
+                    "example": "7uh37xVCN0oGarKZ79nx"
+                },
+                "type": {
+                    "description": "Type 验证码类型",
+                    "type": "string",
+                    "example": "audio"
                 }
             }
         },
