@@ -360,6 +360,18 @@ definitions:
     - request_id
     - status
     type: object
+  handler.RollbackChatMessageRequest:
+    properties:
+      message_id:
+        description: MessageID 消息ID
+        type: integer
+      session_type:
+        description: SessionType 会话类型; 1-私人会话;2-群聊会话;99-世界频道会话
+        type: integer
+      target_id:
+        description: TargetID 目标ID; 朋友ID/群ID/世界频道ID
+        type: integer
+    type: object
   handler.SendChatMessageRequest:
     description: 聊天发送消息请求参数
     properties:
@@ -687,6 +699,41 @@ paths:
       security:
       - APIKeyQuery: []
       summary: 获取最近的聊天消息
+      tags:
+      - 聊天
+  /v1/chat/message/rollback:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 请求JSON数据体
+        in: body
+        name: jsonRaw
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RollbackChatMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.Response'
+      security:
+      - APIKeyQuery: []
+      summary: 撤回聊天消息处理方法
       tags:
       - 聊天
   /v1/chat/message/send:

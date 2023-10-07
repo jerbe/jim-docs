@@ -287,6 +287,62 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/chat/message/rollback": {
+            "post": {
+                "security": [
+                    {
+                        "APIKeyQuery": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "聊天"
+                ],
+                "summary": "撤回聊天消息处理方法",
+                "parameters": [
+                    {
+                        "description": "请求JSON数据体",
+                        "name": "jsonRaw",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.RollbackChatMessageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handler.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/chat/message/send": {
             "post": {
                 "security": [
@@ -1509,6 +1565,23 @@ const docTemplate = `{
                 "status": {
                     "type": "integer",
                     "example": 1
+                }
+            }
+        },
+        "handler.RollbackChatMessageRequest": {
+            "type": "object",
+            "properties": {
+                "message_id": {
+                    "description": "MessageID 消息ID",
+                    "type": "integer"
+                },
+                "session_type": {
+                    "description": "SessionType 会话类型; 1-私人会话;2-群聊会话;99-世界频道会话",
+                    "type": "integer"
+                },
+                "target_id": {
+                    "description": "TargetID 目标ID; 朋友ID/群ID/世界频道ID",
+                    "type": "integer"
                 }
             }
         },
